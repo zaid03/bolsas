@@ -1,0 +1,209 @@
+<div class="credito-page">
+    <div 
+        class="sidebar-backdrop" 
+        *ngIf="!sidebar.collapsed" 
+        (click)="sidebar.collapsed = true"
+    >
+    </div>
+    <app-sidebar #sidebar></app-sidebar>
+    <div class="credito-container" [class.blurred]="!sidebar.collapsed">
+        <h2>Lista de Bolsas de credito</h2>
+        <div class="credito-search">
+            <form class="search-form">
+                <input 
+                    type="text" 
+                    class="search-bar" 
+                    placeholder="Buscar factura" 
+                    name="search"
+                    maxlength="4"
+                    [(ngModel)]="centroGestor"
+                    (ngModelChange)="centroGestor = ($event || '').toUpperCase()"
+                >
+                <button type="button" class="search-button" (click)="searchBolsas()">Buscar</button>
+            </form>
+            <h1 style="margin-top: 2%; font-family: inherit; color: red; font-size: inherit;">{{ searchMessage }}</h1>
+        </div>
+        <div class="credito-download">
+            <button class="download-btn" >Descargar como PDF</button>
+            <button class="download-btn" >Descargar como CSV</button>
+        </div>
+        <div class="credito-list">
+            <h1 style="margin-bottom:2%; font-family: inherit; color: red; font-size: inherit;" id="error">{{ tableMessage }}</h1>
+            <table class="credito-table">
+                <thead>
+                    <tr>
+                        <th>Aplicación</th>
+                        <th>Desc. Aplicación</th>
+                        <th>Operación contable</th>
+                        <th>Ref. contable</th>
+                        <th>Imp. Operación</th>
+                        <th>Saldo Operación</th>
+                        <th>Pte. Contabilizar SCAP</th>
+                        <th>Disponible</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let p of paginatedFacturas">
+                        <td (click)="showDetails(p)" style="cursor: pointer;">{{ p.gbsorg }} - {{ p.gbsfun }} - {{ p.gbseco}}</td>
+                        <td>web serice</td>
+                        <td>{{ p.gbsope }}</td>
+                        <td>{{ p.gbsref }}</td>
+                        <td>web serice</td>
+                        <td>web serice</td>
+                        <td>{{ getkAcPeCo(p.gbsiut, p.gbsict)}}</td>
+                        <td>to be counted after web service is done</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="pagination-controls">
+                <button (click)="prevPage()" [disabled]="page === 0">Anterior</button>
+                <span>Página</span>
+                <input
+                    type="number"
+                    min="1"
+                    [max]="totalPages"
+                    [value]="page + 1"
+                    (change)="goToPage($event)"
+                    class="pagination-input"
+                    class="pagination-input"
+                />
+                <span>de {{ totalPages }}</span>
+                <button (click)="nextPage()" [disabled]="page + 1 >= totalPages">Siguiente</button>
+            </div>
+            <div class="modal-backdrop" *ngIf="selectedBolsas" (click)="closeDetails()"></div>
+            <div class="display" >
+                <div class="modal" *ngIf="selectedBolsas">
+                    <button class="close-btn-fct" (click)="closeDetails()">×</button>
+                    <h3>Detalles de Bolsa</h3>
+                    <div class="first-row">
+                        <div class="first-data">
+                            <p>Centro Gestor:</p>
+                            <input type="text" [(ngModel)]="selectedBolsas.cgecod" />
+                            <input type="text" [(ngModel)]="selectedBolsas.cgedes" />
+                        </div>
+                        <div class="first-data">
+                            <p>Cerrado:</p>
+                            <input type="text" [value]="getkCGECIC(selectedBolsas.cgecic)" />
+                        </div>
+                    </div>
+                    <div class="second-row">
+                        <div class="data-name">
+                            <p>Contabilidad</p>
+                        </div>
+                        <div class="data-name">
+                            <p>Bolsa</p>
+                        </div>
+                    </div>
+                    <div class="third-row">
+                        <div class="third-data">
+                            <p>Applicación:</p>
+                            <input type="text" [(ngModel)]="bolsaCombo" />
+                            <h5>Kapldes!</h5>
+                        </div>
+                        <div class="third-data">
+                            <div class="third-data-special">
+                                <p>Fecha bolsa</p>
+                                <input type="text" [value]="selectedBolsas?.gbsfop | date:'dd/MM/yyyy HH:mm'" readonly />
+                            </div>
+                            <div class="third-data-special">
+                                <p>Suplemento 413</p>
+                                <input type="text" [(ngModel)]="selectedBolsas.gbs413" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="fourth-row">
+                        <div class="fourth-data">
+                            <div class="fourth-data-special">
+                                <p>Operación</p>
+                                <input type="text" class="more" [(ngModel)]="selectedBolsas.gbsope" />
+                            </div>
+                            <div class="fourth-data-special">
+                                <p>Referencia</p>
+                                <input type="text" class="more" [(ngModel)]="selectedBolsas.gbsref" />
+                            </div>
+                            <div class="fourth-data-special">
+                                <p>Importe Op.</p>
+                                <h5>kopelmp!</h5>
+                            </div>
+                        </div>
+                        <div class="fourth-data bordering">
+                            <div class="fourth-data-special">
+                                <p>Importe bolsa</p>
+                                <input type="text" [(ngModel)]="selectedBolsas.gbsimp" />
+                            </div>
+                            <div class="fourth-data-special">
+                                <h5 class="ope">+</h5>
+                            </div>
+                            <div class="fourth-data-special">
+                                <p>Importe bolsa gestion</p>
+                                <input type="text" [(ngModel)]="selectedBolsas.gbsibg" />
+                            </div>
+                            <div class="fourth-data-special">
+                                <h5 class="ope">-</h5>
+                            </div>
+                            <div class="fourth-data-special">
+                                <p>Usado bolsa</p>
+                                <input type="text" [(ngModel)]="selectedBolsas.gbsius" />
+                            </div>
+                            <div class="fourth-data-special">
+                                <h5 class="ope">=</h5>
+                            </div>
+                            <div class="fourth-data-special">
+                                <p>Disponible bolsa</p>
+                                <input type="text" [value]="getKBoldis(selectedBolsas.gbsimp, selectedBolsas.gbsibg, selectedBolsas.gbsius)" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="fifth-row">
+                        <div class="fifth-data bordering">
+                            <div class="fifth-data-special">
+                                <p>Saldo op.</p>
+                                <h5>Kopesal</h5>
+                            </div>
+                            <div class="fifth-data-special-math">
+                                <h5 class="ope">-</h5>
+                            </div>
+                            <div class="fifth-data-special">
+                                <p>Pte. conta SCAP</p>
+                                <input type="text" [value]="getkAcPeCo(selectedBolsas.gbsiut, selectedBolsas.gbsict)" />
+                            </div>
+                            <div class="fifth-data-special-math">
+                                <h5 class="ope">=</h5>
+                            </div>
+                            <div class="fifth-data-special">
+                                <p>Disponible</p>
+                                <h5>kdispon!</h5>
+                            </div>
+                        </div>
+
+                        <div class="fifth-data-special bordering">
+                            <div class="title">
+                                <h5>Acumulados</h5>
+                            </div>
+                            <div class="fifth-data-special-container">
+                                <div class="fifth-data-special">
+                                    <p>Gastado Total</p>
+                                    <input type="text" [ngModel]="selectedBolsas.gbsiut" />
+                                </div>
+                                <div class="fifth-data-special-math">
+                                    <h5 class="opee">-</h5>
+                                </div>
+                                <div class="fifth-data-special">
+                                    <p>Contabilizaado Total</p>
+                                    <input type="text" [(ngModel)]="selectedBolsas.gbsict" />
+                                </div>
+                                <div class="fifth-data-special-math">
+                                    <h5 class="opee">=</h5>
+                                </div>
+                                <div class="fifth-data-special">
+                                    <p>Pte. Contabilizar SCAP</p>
+                                    <input type="text" [value]="getkAcPeCo(selectedBolsas.gbsiut, selectedBolsas.gbsict)" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

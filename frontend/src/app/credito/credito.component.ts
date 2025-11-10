@@ -18,6 +18,7 @@ export class CreditoComponent {
   public centroGestor: string = '';
   private initialCentroGestor: string = '';
   creditos: any[] = [];
+  wsData: any[] = [];
   private backupCreditos: any[] = [];
   public Math = Math;
   page = 0;
@@ -57,16 +58,44 @@ export class CreditoComponent {
       return;
     }
 
-    console.log(this.entcod, this.eje, this.centroGestor);
-
     this.http.get<any>(`http://localhost:8080/api/gbs/${this.entcod}/${this.eje}/${this.centroGestor}`).subscribe({
       next: (response) => {
         if (response.error) {
           alert('Error: ' + response.error);
         } else {
-          this.creditos = response;
-          console.log(this.creditos);
-          this.backupCreditos = Array.isArray(response) ? [...response] : [];
+          this.creditos = Array.isArray(response) ? [...response] : [];
+          this.backupCreditos = [...this.creditos];
+          this.creditos.forEach((item, idx) => {
+            const org = item?.gbsorg ?? '';
+            const fun = item?.gbsfun ?? '';
+            const eco = item?.gbseco ?? '';
+            this.http
+              .get<any>(`http://localhost:8080/api/sical/partidas?clorg=${org}&clfun=${fun}&cleco=${eco}`)
+              .subscribe({
+                next: (partidas) => {
+                  const partidasArr = Array.isArray(partidas) ? partidas : [];
+                  this.creditos[idx].partidas = partidasArr;
+                  const des = partidasArr[0]?.desc ?? '';
+                  this.creditos[idx].partidaDesc = des;
+                },
+                error: () => {
+                  this.creditos[idx].partidas = [];
+                },
+              });
+              this.http.get<any>(`http://localhost:8080/api/sical/operaciones?clorg=${org}&clfun=${fun}&cleco=${eco}`)
+              .subscribe({
+                next: (operaciones) => {
+                  const operacionesArr = Array.isArray(operaciones) ? operaciones : [];
+                  this.creditos[idx].operaciones = operacionesArr;
+                  const firstLinea = operacionesArr[0]?.lineaList?.[0] ?? {};
+                  const saldo = this.creditos[idx].saldo = firstLinea?.saldo ?? 0;
+                  const limporte = this.creditos[idx].limporte = firstLinea?.limporte ?? 0;
+                },
+                error: () => {
+                  this.creditos[idx].operaciones = [];
+                },
+              });
+          });
           this.page = 0;
         }
       }, error: (err) => {
@@ -161,6 +190,18 @@ export class CreditoComponent {
     return (a + b -c).toFixed();
   }
 
+  public getkdispon(saldo: any, getkAcPeCo: any): string {
+    const toNum = (v:any) => {
+      if (v === null || v === undefined || v === '') return 0;
+      const n = Number(v);
+      return isNaN(n) ? 0 : n;
+    };
+
+    const a = toNum(saldo);
+    const b = toNum(getkAcPeCo);
+    return (a - b).toFixed();
+  }
+
   searchBolsas(){
     this.searchMessage = '';
     this.searchIsError = false;
@@ -183,7 +224,6 @@ export class CreditoComponent {
           alert('Error: ' + response.error);
         } else {
           this.creditos = response;
-          console.log(this.creditos);
           this.backupCreditos = Array.isArray(response) ? [...response] : [];
           this.page = 0;
         }

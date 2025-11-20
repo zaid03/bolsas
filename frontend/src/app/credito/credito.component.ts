@@ -23,10 +23,12 @@ export class CreditoComponent {
   public Math = Math;
   page = 0;
   pageSize = 20;
-  searchMessage: string = '';
-  searchIsError: boolean = false;
   tableMessage: string = '';
   tableIsError: boolean = false;
+  guardarMesage: string = '';
+  guardarisError: boolean = false;
+  guardarMesageSuccess: string = '';
+  guardarisSuccess : boolean = false;
 
   constructor(private http: HttpClient, private router: Router) {}
 
@@ -139,10 +141,12 @@ export class CreditoComponent {
   }
 
   selectedBolsas: any = null;
-  detallesMessage: String = '';
-  dettalesIsError: boolean = false;
 
   showDetails(factura: any) {
+    this.guardarisError = false;
+    this.guardarMesage = '';
+    this.guardarisSuccess = false;
+    this.guardarMesageSuccess = ''
     this.selectedBolsas = factura;
     const org = factura?.gbsorg ?? '';
     const fun = factura?.gbsfun ?? '';
@@ -161,8 +165,6 @@ export class CreditoComponent {
 
   closeDetails() {
     this.selectedBolsas = null;
-    this.dettalesIsError = false;
-    this.detallesMessage = '';
   }
 
   public getkCGECIC(cgecic: any): string {
@@ -200,5 +202,67 @@ export class CreditoComponent {
     const a = toNum(saldo);
     const b = toNum(getkAcPeCo);
     return (a - b).toFixed();
+  }
+
+  guardarDetelles(gbsimp: any, getKBoldis:any, gbsref: any) {
+    const entidad = sessionStorage.getItem('Entidad');
+    const eje = sessionStorage.getItem('EJERCICIO');
+    const cge = sessionStorage.getItem('CENTROGESTOR');
+
+    if (cge){
+      const parsed = JSON.parse(cge);
+      this.centroGestor = parsed.value
+      this.initialCentroGestor = this.centroGestor;
+    }
+
+    if (entidad) {
+      const parsed = JSON.parse(entidad);
+      this.entcod = parsed.ENTCOD;
+    }
+    if (eje) {
+      const parsed = JSON.parse(eje);
+      this.eje = parsed.eje;
+    }
+
+    console.log(this.entcod);
+    console.log(this.eje);
+    console.log(this.initialCentroGestor);
+    console.log(gbsref);
+
+    const toNum = (v:any) => {
+      if (v === null || v === undefined || v === '') return 0;
+      const n = Number(v);
+      return isNaN(n) ? 0 : n;
+    };
+
+    let currentdate = new Date();
+    const a = toNum (gbsimp);
+    const b = toNum(getKBoldis);
+
+    if ( gbsimp > b) {
+      this.guardarisError = true;
+      this.guardarMesage = 'HA SOBREPASADO EL DISPONIBLE DE LA REFERENCIA';
+      return;
+    }
+
+    const payload = {
+      gbsimp: a,
+      gbsius: 0,
+      gbseco: 0,
+      gbsfop: currentdate.getFullYear() + "-" + (currentdate.getMonth() + 1) + "-" + currentdate.getDate()
+    };
+    console.log("payload here: ", payload);
+
+    this.http.patch<void>(`http://localhost:8080/api/gbs/${this.entcod}/${this.eje}/${this.initialCentroGestor}/${gbsref}`, payload)
+      .subscribe({
+        next: () => {
+          this.guardarisSuccess = true;
+          this.guardarMesageSuccess = 'Bolsa actualizada correctamente';
+        },
+        error: (err) => {
+          this.guardarisError = true;
+          this.guardarMesage = err?.ex ?? 'Error al actualizar';
+        }
+      });
   }
 }

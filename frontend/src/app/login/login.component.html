@@ -1,24 +1,14 @@
-<div class="table-container">
-  <table *ngIf="tableData.length > 0" class="styled-table">
-    <thead>
-      <tr>
-        <th>Perfil</th>
-        <th>Usario</th>      
-        <th>Entidad</th>
-        <th>Nombre</th>
-        <th>Acción</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr *ngFor="let t of tableData">
-        <td>{{ t.percod }}</td>
-        <td>{{ t.usucod }}</td>
-        <td>{{ t.entcod }}</td>
-        <td>{{ t.entnom }}</td>
-        <td>
-          <button (click)="selectRow(t)">Seleccionar</button>
-        </td>
-      </tr>
-    </tbody>
-  </table>
+<div class="login-container">
+    <div class="logo-container">
+       <img [src]="logoPath" alt="Logo" class="login-logo">
+    </div>
+    <div *ngIf="!isValidating" class="login-form">
+        <h2>Para iniciar sesión</h2>
+        <button class="tologin" (click)="goToCAS()">Conectar con cas</button>
+    </div>
+    <div *ngIf="isValidating" class="validation-state">
+        <p>{{ loadingMessage }}</p>
+        <div class="spinner"></div>
+    </div>
+    <div *ngIf="errormessage" class="error">{{ errormessage }}</div>
 </div>

@@ -8,54 +8,114 @@
     <app-sidebar #sidebar></app-sidebar>
     <div class="credito-container" [class.blurred]="!sidebar.collapsed">
         <div class="title-menu">
-            <h2 class="margin-title">Lista de Bolsas de credito</h2>  
+            <div class="title-area">
+                <h2 class="margin-title">Gestión bolsa de crédito por centro gestor</h2>  
+            </div>
+            <div class="search-holder">
+                <div class="cge-text">
+                    <p>Centro Gestor: </p>
+                    <span>{{cge}}</span>
+                </div>
+            </div>
             <div class="group-menu" (click)="toggleMenu($event)">
                 <div class="dot"></div>
                 <div class="dot"></div>
                 <div class="dot"></div>
                 <div class="menu-panel" *ngIf="showMenu">
-                    <button class="download-btn" (click)="DownloadPDF(); closeMenu()">Descargar como PDF</button>
-                    <button class="download-btn" (click)="DownloadCSV(); closeMenu()">Descargar como CSV</button>
+                    <button class="download-btn" (click)="DownloadPDF()">Exportar a PDF</button>
+                    <button class="download-btn" (click)="DownloadCSV()">Exportar a CSV</button>
                 </div>
             </div>
         </div>
-        <div class="credito-search">
-            <form class="search-form">
-                <input 
-                    type="text" 
-                    class="search-bar" 
-                    placeholder="Buscar factura" 
-                    name="search"
-                    maxlength="4"
-                    [(ngModel)]="centroGestor"
-                    readonly
-                >
-            </form>
-        </div>
         <div class="credito-list">
-            <h1 style="margin-bottom:2%; font-family: inherit; color: red; font-size: inherit;" id="error">{{ tableMessage }}</h1>
+            <h1 class="errorBtn">{{ tableMessage }}</h1>
+            <div *ngIf="isLoading" class="loading-message">
+                <div class="spinner"></div>
+                <span>Cargando</span>
+            </div>
             <table class="credito-table">
                 <thead>
                     <tr>
-                        <th>Aplicación</th>
-                        <th>Desc. Aplicación</th>
-                        <th>Operación contable</th>
-                        <th
-                            class="sortable"
-                            (click)="toggleSort('gbsref')"
-
-                        >
-                            Ref. contable
-                            <span 
-                                class="sort-indicator" 
-                            >
-                            {{ sortDirection === 'asc' ? '▲' : '▼' }}
+                        <th 
+                            class="sortable" 
+                            (click)="setSort('gbseco')"
+                            class="sortable resizable"
+                        >   Aplicación
+                            <span *ngIf="sortField === 'gbseco'">
+                                {{ sortDirection === 'asc' ? '▲' : '▼' }}
                             </span>
+                            <div class="resizer" (mousedown)="startResize($event, 0)"></div>
                         </th>
-                        <th>Imp. Operación</th>
-                        <th>Saldo Operación</th>
-                        <th>Pte. Contabilizar SCAP</th>
-                        <th>Disponible</th>
+                        <th 
+                            class="sortable" 
+                            (click)="setSort('partidaDesc')"
+                            class="sortable resizable"
+                        >   Desc.Aplicación
+                            <span *ngIf="sortField === 'partidaDesc'">
+                                {{ sortDirection === 'asc' ? '▲' : '▼' }}
+                            </span>
+                            <div class="resizer" (mousedown)="startResize($event, 1)"></div>
+                        </th>
+                        <th 
+                            class="sortable" 
+                            (click)="setSort('gbsope')"
+                            class="sortable resizable"
+                        >   Operación contable
+                            <span *ngIf="sortField === 'gbsope'">
+                                {{ sortDirection === 'asc' ? '▲' : '▼' }}
+                            </span>
+                            <div class="resizer" (mousedown)="startResize($event, 2)"></div>
+                        </th>
+                        <th 
+                            class="sortable" 
+                            (click)="setSort('gbsref')"
+                            class="sortable resizable"
+                        >   Ref.contable
+                            <span *ngIf="sortField === 'gbsref'">
+                                {{ sortDirection === 'asc' ? '▲' : '▼' }}
+                            </span>
+                            <div class="resizer" (mousedown)="startResize($event, 3)"></div>
+                        </th>
+                        <th 
+                            class="sortable" 
+                            (click)="setSort('limporte')"
+                            class="sortable resizable"
+                        >   Imp.Operación
+                            <span *ngIf="sortField === 'limporte'">
+                                {{ sortDirection === 'asc' ? '▲' : '▼' }}
+                            </span>
+                            <div class="resizer" (mousedown)="startResize($event, 4)"></div>
+                        </th>
+                        <th 
+                            class="sortable" 
+                            (click)="setSort('saldo')"
+                            class="sortable resizable"
+                        >   Saldo Operación
+                            <span *ngIf="sortField === 'saldo'">
+                                {{ sortDirection === 'asc' ? '▲' : '▼' }}
+                            </span>
+                            <div class="resizer" (mousedown)="startResize($event, 5)"></div>
+                        </th>
+                        <th 
+                            class="sortable" 
+                            (click)="setSort('gbsiut')"
+                            class="sortable resizable"
+                        >   Pte.Contabilizar SCAP
+                            <span *ngIf="sortField === 'gbsiut'">
+                                {{ sortDirection === 'asc' ? '▲' : '▼' }}
+                            </span>
+                            <div class="resizer" (mousedown)="startResize($event, 6)"></div>
+                        </th>
+                        <th 
+                            class="sortable" 
+                            (click)="setSort('gbsict')"
+                            class="sortable resizable"
+                        >   Disponible
+                            <span *ngIf="sortField === 'gbsict'">
+                                {{ sortDirection === 'asc' ? '▲' : '▼' }}
+                            </span>
+                            <div class="resizer" (mousedown)="startResize($event, 7)"></div>
+                        </th>
                     </tr>
                 </thead>
                 <tbody>
@@ -89,139 +149,143 @@
             <div class="modal-backdrop" *ngIf="selectedBolsas" (click)="closeDetails()"></div>
             <div class="display" >
                 <div class="modal" *ngIf="selectedBolsas">
-                    <button class="close-btn-fct" (click)="closeDetails()">×</button>
-                    <h3>Detalles de Bolsa</h3>
-                    <div class="first-row">
-                        <div class="first-data">
-                            <p>Centro Gestor:</p>
-                            <textarea [(ngModel)]="selectedBolsas.cgecod" readonly></textarea>
-                            <textarea type="text" [(ngModel)]="selectedBolsas.cgedes" readonly></textarea>
+                    <div class="btns">
+                        <div class="title-detail">
+                            <h3>Detalles de Bolsa</h3>
                         </div>
-                        <div class="first-data">
-                            <p>Cerrado:</p>
-                            <textarea [value]="getkCGECIC(selectedBolsas.cgecic)" readonly></textarea>
-                        </div>
-                    </div>
-                    <div class="second-row">
-                        <div class="data-name">
-                            <p>Contabilidad</p>
-                        </div>
-                        <div class="data-name">
-                            <p>Bolsa</p>
-                        </div>
-                    </div>
-                    <div class="third-row">
-                        <div class="third-data">
-                            <p>Applicación:</p>
-                            <textarea [(ngModel)]="bolsaCombo" readonly></textarea>
-                            <textarea [value]="selectedBolsas?.partidas?.[0]?.desc || ''" readonly></textarea>
-                        </div>
-                        <div class="third-data">
-                            <div class="third-data-special">
-                                <p>Fecha bolsa</p>
-                                <textarea [value]="selectedBolsas?.gbsfop | date:'dd/MM/yyyy'" readonly></textarea>
-                            </div>
-                            <div class="third-data-special">
-                                <p>Suplemento 413</p>
-                                <textarea [(ngModel)]="selectedBolsas.gbs413" readonly></textarea>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="fourth-row">
-                        <div class="fourth-data">
-                            <div class="fourth-data-special">
-                                <p>Operación</p>
-                                <textarea [(ngModel)]="selectedBolsas.gbsope" readonly></textarea>
-                            </div>
-                            <div class="fourth-data-special">
-                                <p>Referencia</p>
-                                <textarea [(ngModel)]="selectedBolsas.gbsref" readonly></textarea>
-                            </div>
-                            <div class="fourth-data-special">
-                                <p>Importe Op.</p>
-                                <textarea [value]="selectedBolsas?.limporte" readonly></textarea>
-                            </div>
-                        </div>
-                        <div class="fourth-data bordering left">
-                            <div class="fourth-data-special">
-                                <p>Importe bolsa</p>
-                                <textarea [ngModel]="selectedBolsas.gbsimp | currency:'EUR':'symbol':'1.2-2':'es-ES'"
-                                (blur)="formatGbsimp($event)"></textarea>
-                            </div>
-                            <div class="fourth-data-special">
-                                <h5 class="ope">+</h5>
-                            </div>
-                            <div class="fourth-data-special">
-                                <p>Importe bolsa gestion</p>
-                                <textarea [ngModel]="selectedBolsas.gbsibg | currency:'EUR':'symbol':'1.2-2':'es-ES'" readonly></textarea>
-                            </div>
-                            <div class="fourth-data-special">
-                                <h5 class="ope">-</h5>
-                            </div>
-                            <div class="fourth-data-special">
-                                <p>Usado bolsa</p>
-                                <textarea [ngModel]="selectedBolsas.gbsius | currency:'EUR':'symbol':'1.2-2':'es-ES'" readonly></textarea>
-                            </div>
-                            <div class="fourth-data-special">
-                                <h5 class="ope">=</h5>
-                            </div>
-                            <div class="fourth-data-special">
-                                <p>Disponible bolsa</p>
-                                <textarea [value]="getKBoldis(selectedBolsas.gbsimp, selectedBolsas.gbsibg, selectedBolsas.gbsius) | currency:'EUR':'symbol':'1.2-2':'es-ES'" readonly></textarea>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="fifth-row">
-                        <div class="fifth-data bordering">
-                            <div class="fifth-data-special">
-                                <p>Saldo op.</p>
-                                <textarea  [value]="selectedBolsas?.saldo | currency:'EUR':'symbol':'1.2-2':'es-ES'" readonly></textarea>
-                            </div>
-                            <div class="fifth-data-special-math">
-                                <h5 class="ope">-</h5>
-                            </div>
-                            <div class="fifth-data-special">
-                                <p>Pte. conta SCAP</p>
-                                <textarea [value]="getkAcPeCo(selectedBolsas.gbsiut, selectedBolsas.gbsict) | currency:'EUR':'symbol':'1.2-2':'es-ES'" readonly></textarea>
-                            </div>
-                            <div class="fifth-data-special-math">
-                                <h5 class="ope">=</h5>
-                            </div>
-                            <div class="fifth-data-special">
-                                <p>Disponible</p>
-                                <textarea [value]="getkdispon(selectedBolsas.saldo, getkAcPeCo(selectedBolsas?.gbsiut, selectedBolsas?.gbsict)) | currency:'EUR':'symbol':'1.2-2':'es-ES'" readonly></textarea>
-                            </div>
-                        </div>
-
-                        <div class="fifth-data-special bordering">
-                            <div class="title">
-                                <h5>Acumulados</h5>
-                            </div>
-                            <div class="fifth-data-special-container">
-                                <div class="fifth-data-special">
-                                    <p>Gastado Total</p>
-                                    <textarea [ngModel]="selectedBolsas.gbsiut | currency:'EUR':'symbol':'1.2-2':'es-ES'" readonly></textarea>
-                                </div>
-                                <div class="fifth-data-special-math">
-                                    <h5 class="opee">-</h5>
-                                </div>
-                                <div class="fifth-data-special">
-                                    <p>Contabilizaado Total</p>
-                                    <textarea [ngModel]="selectedBolsas.gbsict | currency:'EUR':'symbol':'1.2-2':'es-ES'" readonly></textarea>
-                                </div>
-                                <div class="fifth-data-special-math">
-                                    <h5 class="opee">=</h5>
-                                </div>
-                                <div class="fifth-data-special">
-                                    <p>Pte. Contabilizar SCAP</p>
-                                    <textarea [value]="getkAcPeCo(selectedBolsas.gbsiut, selectedBolsas.gbsict) | currency:'EUR':'symbol':'1.2-2':'es-ES'" readonly></textarea>
-                                </div>
-                            </div>
-                        </div>
+                        <button class="save-btn" (click)="updateBolsa(gbsimp.value, getkdispon(selectedBolsas.saldo, getkAcPeCo(selectedBolsas.gbsiut, selectedBolsas.gbsict)), selectedBolsas.gbsref)">✔</button>
+                        <button class="close-btn-btn" (click)="closeDetails()">✖</button>
                     </div>
                     <h1 class="successBtn">{{ guardarMesageSuccess }}</h1>
                     <h1 class="errorBtn">{{ guardarMesage }}</h1>
-                    <button class="save-btn" (click)="guardarDetelles(selectedBolsas.gbsimp, getKBoldis(selectedBolsas.gbsimp, selectedBolsas.gbsibg, selectedBolsas.gbsius), selectedBolsas.gbsref)">Guardar</button>
+                    <div *ngIf="isUpdating" class="loading-message">
+                        <div class="spinner"></div>
+                        <span>actualizando</span>
+                    </div>
+                    <div class="detail-container">
+                        <div class="chunk-one">
+                            <div class="detail-title">
+                                <p>Contabilidad</p>
+                            </div>
+                            <div class="detail-chunk-container">
+                                <div class="left">
+                                    <p>Centro Gestor</p>
+                                    <p>Applicación</p>
+                                    <p>Operación</p>
+                                    <p>Referencia</p>
+                                    <p>Importe Op</p>
+                                </div>
+                                <div class="right">
+                                    <div class="on-two">
+                                        <h1>{{selectedBolsas.cgecod || '#'}}</h1>
+                                        <h1>{{selectedBolsas.cgedes || '#'}}</h1>
+                                    </div>
+                                    <div class="on-two">
+                                        <h1>{{bolsaCombo || '#'}}</h1>
+                                        <h1>{{selectedBolsas?.partidas?.[0]?.desc || '#'}}</h1>
+                                    </div>
+                                    <h1>{{selectedBolsas.gbsope || '#'}}</h1>
+                                    <h1>{{selectedBolsas.gbsref || '#'}}</h1>
+                                    <h1>{{selectedBolsas?.limporte || '#'}}</h1>
+                                </div>
+                            </div>  
+                        </div>
+                        <div class="chunk-two">
+                            <div class="detail-title">
+                                <p>Bolsa</p>
+                                <span class="boll">{{ getkCGECIC(selectedBolsas.cgecic) || '#'}}</span>
+                            </div>
+                            <div class="detail-chunk-container">
+                                <div class="left special">
+                                    <p>Fecha bolsa</p>
+                                </div>
+                                <div class="right">
+                                    <div class="on-two">
+                                        <h1>{{selectedBolsas?.gbsfop ? (selectedBolsas.gbsfop | date:'dd/MM/yyyy') : '#'}}</h1>
+                                        <p>Suplemento 413</p>
+                                        <h1>{{selectedBolsas?.gbs413? (selectedBolsas.gbs413) : '#'}}</h1>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="conta-first">
+                                <div class="conta-one">
+                                    <p>Importe bolsa</p>
+                                    <textarea 
+                                        class="smallTextarea" 
+                                        [(ngModel)]="selectedBolsas.gbsimp" 
+                                        (blur)="formatGbsimp()"
+                                        #gbsimp
+                                    ></textarea>
+                                </div>
+                                <div class="conta-sign">
+                                    <span class="plus">+</span>
+                                </div>
+                                <div class="conta-two">
+                                    <p>Importe bolsa gestion</p>
+                                    <h1 class="fix">{{selectedBolsas.gbsibg | currency:'EUR':'symbol':'1.2-2':'es-ES'}}</h1>
+                                </div>
+                                <div class="conta-sign">
+                                    <span class="minus">-</span>
+                                </div>
+                                <div class="conta-three">
+                                    <p>Usado bolsa</p>
+                                    <h1 class="fix">{{selectedBolsas.gbsius | currency:'EUR':'symbol':'1.2-2':'es-ES'}}</h1>
+                                </div>
+                                <div class="conta-sign">
+                                    <span class="equal">=</span>
+                                </div>
+                                <div class="conta-four">
+                                    <p>Disponible bolsa</p>
+                                    <h1 class="fix">{{getKBoldis(selectedBolsas.gbsimp, selectedBolsas.gbsibg, selectedBolsas.gbsius) | currency:'EUR':'symbol':'1.2-2':'es-ES'}}</h1>
+                                </div>
+                            </div>
+                            <div class="conta-second">
+                                <div class="conta-one">
+                                    <p>Saldo op.</p>
+                                    <h1>{{selectedBolsas?.saldo | currency:'EUR':'symbol':'1.2-2':'es-ES'}}</h1>
+                                </div>
+                                <div class="conta-sign">
+                                    <span class="minus">-</span>
+                                </div>
+                                <div class="conta-two">
+                                    <p>Pte. conta SCAP</p>
+                                    <h1>{{getkAcPeCo(selectedBolsas.gbsiut, selectedBolsas.gbsict) | currency:'EUR':'symbol':'1.2-2':'es-ES'}}</h1>
+                                </div>
+                                <div class="conta-sign">
+                                    <span class="equal">=</span>
+                                </div>
+                                <div class="conta-three">
+                                    <p>Disponible</p>
+                                    <h1>{{getkdispon(selectedBolsas.saldo, getkAcPeCo(selectedBolsas?.gbsiut, selectedBolsas?.gbsict)) | currency:'EUR':'symbol':'1.2-2':'es-ES'}}</h1>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="acumolados">
+                        <div class="detail-title">
+                            <p>Acumulados</p>
+                        </div>
+                        <div class="detail-acumolados-container">
+                            <div class="conta-one">
+                                <p>Gastado Total</p>
+                                <h1>{{selectedBolsas.gbsiut | currency:'EUR':'symbol':'1.2-2':'es-ES'}}</h1>
+                            </div>
+                            <div class="conta-sign">
+                                <span class="minus">-</span>
+                            </div>
+                            <div class="conta-two">
+                                <p>Contabilizaado Total</p>
+                                <h1>{{selectedBolsas.gbsict | currency:'EUR':'symbol':'1.2-2':'es-ES'}}</h1>
+                            </div>
+                            <div class="conta-sign">
+                                <span class="equal">=</span>
+                            </div>
+                            <div class="conta-three">
+                                <p>Pte. Contabilizar SCAP</p>
+                                <h1>{{getkAcPeCo(selectedBolsas.gbsiut, selectedBolsas.gbsict) | currency:'EUR':'symbol':'1.2-2':'es-ES'}}</h1>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

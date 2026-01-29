@@ -13,7 +13,7 @@ export const routes: Routes = [
     { path: 'dashboard', component: DashboardComponent },
     { path: 'eje', component: EjeComponent},
     { path: 'centro-gestor', component: CentrogestorComponent},
-    { path: 'credito', component: CreditoComponent},
+    { path: 'credito-Cge', component: CreditoComponent},
     { path: '', redirectTo: '/login', pathMatch: 'full' }, //route by default
 ];
 

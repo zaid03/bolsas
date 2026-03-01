@@ -14,10 +14,15 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.backend.dto.Operaciones;
 import com.example.backend.service.OperacionesService;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @RestController
 @RequestMapping("/api/sical")
 @CrossOrigin(origins = "http://localhost:4200")
 public class OperacionesController {
+
+    private static final Logger logger = LoggerFactory.getLogger(OperacionesController.class);
 
     private final OperacionesService operacionesService;
 
@@ -26,7 +31,7 @@ public class OperacionesController {
     }
 
     @GetMapping("/operaciones")
-    public ResponseEntity<List<Operaciones>> getOperaciones(
+    public ResponseEntity<?> getOperaciones(
         @RequestParam(name = "numeroOperDesde", required = false) String numeroOperDesde,
         @RequestParam(name = "numeroOperHasta", required = false) String numeroOperHasta,
         @RequestParam(name = "codigoOperacion", required = false) String codigoOperacion,
@@ -49,8 +54,9 @@ public class OperacionesController {
                     oficina);
             return ResponseEntity.ok(operaciones);
         } catch (Exception ex) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                                 .body(Collections.emptyList());
+            ex.printStackTrace();
+            logger.error("Error in getOperaciones", ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Collections.singletonMap("error", ex.getMessage()));
         }
     }
 }

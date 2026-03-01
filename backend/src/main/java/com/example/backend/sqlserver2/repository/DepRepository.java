@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import com.example.backend.dto.DepWithCgeView;
 import com.example.backend.sqlserver2.model.Dep;
 import com.example.backend.sqlserver2.model.DepId;
 
@@ -15,6 +16,9 @@ public interface DepRepository  extends JpaRepository<Dep, DepId> {
 
     // fetching all services
     List<Dep> findByENTAndEJE(Integer ENT, String EJE);
+
+    // fetching services for a user (main panel)
+    List<DepWithCgeView> findByENTAndEJEAndDpes_PERCOD(Integer ent, String eje, String percod);
 
     // for adding a service
     List<Dep> findByENTAndEJEAndDEPCOD(int ent, String eje, String depcod);

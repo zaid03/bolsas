@@ -4,7 +4,8 @@ import { EntComponent } from './ent/ent.component';
 import { DashboardComponent } from './dashboard/dashboard.component';
 import { CentrogestorComponent } from './centrogestor/centrogestor.component';
 import { EjeComponent } from './eje/eje.component';
-import { CreditoComponent } from './credito/credito.component';
+import { BolsaCreditoComponent } from './bolsa-credito/bolsa-credito.component';
+import { ConsultaBolsasComponent } from './consulta-bolsas/consulta-bolsas.component';
 import { NgModule } from '@angular/core';
 
 export const routes: Routes = [
@@ -13,7 +14,8 @@ export const routes: Routes = [
     { path: 'dashboard', component: DashboardComponent },
     { path: 'eje', component: EjeComponent},
     { path: 'centro-gestor', component: CentrogestorComponent},
-    { path: 'credito-Cge', component: CreditoComponent},
+    { path: 'credito', component: BolsaCreditoComponent},
+    { path: 'Ccredito', component: ConsultaBolsasComponent},
     { path: '', redirectTo: '/login', pathMatch: 'full' }, //route by default
 ];
 

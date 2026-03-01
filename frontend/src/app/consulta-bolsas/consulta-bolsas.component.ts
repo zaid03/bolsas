@@ -4,19 +4,24 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { SidebarComponent } from '../sidebar/sidebar.component';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { environment } from '../../environments/environment';
+
 @Component({
-  selector: 'app-credito',
+  selector: 'app-consulta-bolsas',
   standalone: true,
   imports: [CommonModule, FormsModule, SidebarComponent, CurrencyPipe],
-  templateUrl: './credito.component.html',
-  styleUrls: ['./credito.component.css'],
+  templateUrl: './consulta-bolsas.component.html',
+  styleUrls: ['./consulta-bolsas.component.css'],
   providers: [CurrencyPipe]
 })
-export class CreditoComponent {
+export class ConsultaBolsasComponent {
+  private fetchCancel$ = new Subject<void>();
+
   //3 dots menu
   showMenu = false;
   toggleMenu(event: MouseEvent): void {
@@ -41,7 +46,9 @@ export class CreditoComponent {
   page = 0;
   pageSize = 20;
   tableMessage: string = '';
+  tableIsError: boolean = false;
   guardarMesage: string = '';
+  guardarisError: boolean = false;
   guardarMesageSuccess: string = '';
   guardarisSuccess : boolean = false;
 
@@ -51,26 +58,48 @@ export class CreditoComponent {
   ngOnInit(): void {
     this.limpiarMessages();
     this.isLoading = true;
+    this.tableIsError = false;
+
     const ent = sessionStorage.getItem('Entidad');
     const session = sessionStorage.getItem('EJERCICIO');
     const centroGestor = sessionStorage.getItem('CENTROGESTOR');
-
     if (ent) { const parsed = JSON.parse(ent); this.entcod = parsed.ENTCOD;}
     if (session) { const parsed = JSON.parse(session); this.eje = parsed.eje;}
     if (centroGestor) { const parsed = JSON.parse(centroGestor); this.cge = parsed.value;}
 
-    if (this.entcod == null || this.eje === null || this.cge === null) {
+    if (!this.entcod ||  !this.eje || !this.cge) {
       sessionStorage.clear();
       alert('Debes iniciar sesión para acceder a esta página.');
       this.router.navigate(['/login']);
       return;
     }
 
-    this.getBolsas();
+    this.fetchBolsas();
+    this.fetchCentroGestorInfo();
   }
 
-  //main table functions
-  getBolsas(){
+  //main table functions`
+  organigrama: string = '';
+  programa: string = '';
+  description: string = '';
+  estado: number = 0;
+  fetchCentroGestorInfo() {
+    this.http.get<any>(`${environment.backendUrl}/api/cge/search-centros-codigo/${this.entcod}/${this.eje}/${this.cge}`).subscribe({
+      next: (res) => {
+        this.organigrama = res[0].cgeorg;
+        this.programa = res[0].cgefun;
+        this.description = res[0].cgedes
+        this.estado = res[0].cgecic;
+      },
+      error: (err) => {
+        console.warn(err.error.error ?? err.error);
+      }
+    })
+  }
+
+  fetchBolsas() {
+    this.fetchCancel$.next();
+
     this.http.get<any>(`${environment.backendUrl}/api/gbs/fetch-all/${this.entcod}/${this.eje}/${this.cge}`).subscribe({
       next: (response) => {
         this.creditos = Array.isArray(response) ? [...response] : [];
@@ -80,9 +109,7 @@ export class CreditoComponent {
           const org = item?.gbsorg ?? '';
           const fun = item?.gbsfun ?? '';
           const eco = item?.gbseco ?? '';
-          this.http
-            .get<any>(`${environment.backendUrl}/api/sical/partidas?clorg=${org}&clfun=${fun}&cleco=${eco}`)
-            .subscribe({
+          this.http.get<any>(`${environment.backendUrl}/api/sical/partidas?clorg=${org}&clfun=${fun}&cleco=${eco}`).pipe(takeUntil(this.fetchCancel$)).subscribe({
               next: (partidas) => {
                 const partidasArr = Array.isArray(partidas) ? partidas : [];
                 this.creditos[idx].partidas = partidasArr;
@@ -95,8 +122,7 @@ export class CreditoComponent {
             });
             this.creditos[idx].saldo = 0;
             this.creditos[idx].limporte = 0;
-            this.http.get<any>(`${environment.backendUrl}/api/sical/operaciones?clorg=${org}&clfun=${fun}&cleco=${eco}`)
-            .subscribe({
+            this.http.get<any>(`${environment.backendUrl}/api/sical/operaciones?clorg=${org}&clfun=${fun}&cleco=${eco}`).pipe(takeUntil(this.fetchCancel$)).subscribe({
               next: (operaciones) => {
                 const operacionesArr = Array.isArray(operaciones) ? operaciones : [];
                 this.creditos[idx].operaciones = operacionesArr;
@@ -115,7 +141,8 @@ export class CreditoComponent {
         this.isLoading = false;
       },
       error: (err) => {
-        this.tableMessage = err.error.error;
+        this.tableIsError = true;
+        this.tableMessage = err.error.error ?? err.error;
         this.isLoading = false;
       }
     });
@@ -123,7 +150,6 @@ export class CreditoComponent {
 
   sortField: string | null = null;
   sortDirection: 'asc' | 'desc' = 'asc';
-
   setSort(field: string) {
     if (this.sortField === field) {
       this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
@@ -134,10 +160,10 @@ export class CreditoComponent {
     this.applySort();
   }
 
-  //still need fixing
   applySort() {
     if (!this.sortField) return;
     const field = this.sortField;
+
     this.creditos = [...this.creditos].sort((a, b) => {
       let aVal: any;
       let bVal: any;
@@ -165,27 +191,22 @@ export class CreditoComponent {
       }
 
       if (['limporte', 'saldo', 'gbsiut', 'gbsict'].includes(field)) {
-        const parseMoney = (val: any) => {
-          if (typeof val === 'number') return val;
-          if (!val) return 0;
-          return parseFloat(String(val).replace(/[€\s]/g, '').replace('.', '').replace(',', '.')) || 0;
-        };
-        aVal = parseMoney(a?.[field]);
-        bVal = parseMoney(b?.[field]);
+        aVal = this.parseMoney(a?.[field]);
+        bVal = this.parseMoney(b?.[field]);
         return this.sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
       }
 
       if (field === 'acpeco') {
-        aVal = Number(this.getkAcPeCo(a.gbsiut, a.gbsict));
-        bVal = Number(this.getkAcPeCo(b.gbsiut, b.gbsict));
-        return this.sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
-      }
+        aVal = this.getkAcPeCo(a.gbsiut, a.gbsict);
+        bVal = this.getkAcPeCo(b.gbsiut, b.gbsict);
+          return this.sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+        }
 
       if (field === 'disponible') {
-        aVal = Number(this.getkdispon(a.saldo, this.getkAcPeCo(a.gbsiut, a.gbsict)));
-        bVal = Number(this.getkdispon(b.saldo, this.getkAcPeCo(b.gbsiut, b.gbsict)));
+        aVal = this.getkdispon(a.saldo, this.getkAcPeCo(a.gbsiut, a.gbsict));
+        bVal = this.getkdispon(b.saldo, this.getkAcPeCo(b.gbsiut, b.gbsict));
         return this.sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
-      }
+        }
 
       aVal = a?.[field] ?? '';
       bVal = b?.[field] ?? '';
@@ -238,6 +259,7 @@ export class CreditoComponent {
 
     const source = this.backupCreditos.length ? this.backupCreditos : this.creditos;
     if (!source?.length) {
+      this.tableIsError = true;
       this.tableMessage = 'No hay datos para exportar.';
       return;
     }
@@ -311,11 +333,12 @@ export class CreditoComponent {
     if (value === null || value === undefined || value === '') return '';
     const numberValue = typeof value === 'number' ? value : Number(value);
     if (isNaN(numberValue)) return '';
-    return new Intl.NumberFormat('es-ES', {
+    const formatted = new Intl.NumberFormat('es-ES', {
       style: 'currency',
       currency: 'EUR',
       minimumFractionDigits: 2
     }).format(numberValue);
+    return formatted;
   }
 
   DownloadCSV() {
@@ -367,14 +390,9 @@ export class CreditoComponent {
   }
 
   public getkAcPeCo(gbsiut: any, gbsict: any): string {
-    const toNum = (v: any) => {
-      if (v === null || v === undefined || v === '') return 0;
-      const n = Number(v);
-      return isNaN(n) ? 0 : n;
-    };
-    const a = toNum(gbsiut);
-    const b = toNum(gbsict);
-    return (a - b).toFixed();
+    const a = this.parseMoney(gbsiut);
+    const b = this.parseMoney(gbsict);
+    return Math.round(a - b).toString();
   }
 
   get paginatedFacturas(): any[] {
@@ -398,24 +416,38 @@ export class CreditoComponent {
     }
   }
 
+  cgeSearch: string = '';
+  searchBolsas() {
+    this.isLoading = true;
+    this.fetchCancel$.next();
+    this.fetchCentroGestorInfo();
+    this.fetchBolsas();
+    this.isLoading = false;
+  }
+
+  setInputToUpper(event: Event): void {
+    const target = event.target as HTMLTextAreaElement;
+    let upper = (target.value ?? '').toUpperCase();
+    if(upper.length > 4) {
+      upper = upper.slice(0, 4);
+    }
+    target.value = upper;
+    this.cgeSearch = upper;
+  }
+
+  limpiarSearch() {
+    this.limpiarMessages();
+    this.fetchBolsas();
+    this.cgeSearch = '';
+  }
+  
   //main detail grid functions
   selectedBolsas: any = null;
   showDetails(factura: any) {
     this.limpiarMessages();
+    this.guardarisError = false;
     this.guardarisSuccess = false;
-    this.selectedBolsas = { ...factura };
-    if (this.selectedBolsas.gbsimp !== undefined && this.selectedBolsas.gbsimp !== null) {
-      let num = parseFloat(
-        String(this.selectedBolsas.gbsimp)
-          .replace(/\s/g, '')
-          .replace(/\./g, '')
-          .replace(',', '.')
-          .replace(/[^\d.-]/g, '')
-      );
-      if (!isNaN(num)) {
-        this.selectedBolsas.gbsimp = num.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' });
-      }
-    }
+    this.selectedBolsas = factura;
     const org = factura?.gbsorg ?? '';
     const fun = factura?.gbsfun ?? '';
     const eco = factura?.gbseco ?? '';
@@ -463,15 +495,26 @@ export class CreditoComponent {
   }
 
   public getkdispon(saldo: any, getkAcPeCo: any): string {
-    const toNum = (v:any) => {
-      if (v === null || v === undefined || v === '') return 0;
-      const n = Number(v);
-      return isNaN(n) ? 0 : n;
-    };
+    const a = this.parseMoney(saldo);
+    const b = this.parseMoney(getkAcPeCo);
+    return Math.round(a - b).toString();
+  }
 
-    const a = toNum(saldo);
-    const b = toNum(getkAcPeCo);
-    return (a - b).toFixed();
+  private parseMoney(val: any): number {
+    if (val === null || val === undefined || val === '') return 0;
+    if (typeof val === 'number') return val;
+    let s = String(val).trim();
+    const isParenNeg = /^\(.*\)$/.test(s);
+    if (isParenNeg) s = s.replace(/[()]/g, '');
+    s = s.replace(/\u00A0/g, ' ').replace(/[^\d.,\-]/g, '');
+
+    if (s.includes(',')) {
+      s = s.replace(/\./g, '').replace(',', '.');
+    }
+
+    const n = parseFloat(s);
+    if (isNaN(n)) return 0;
+    return isParenNeg ? -n : n;
   }
 
   formatGbsimp() {
@@ -486,40 +529,21 @@ export class CreditoComponent {
       this.selectedBolsas.gbsimp = num.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' });
     }
   }
-
-  isUpdating: boolean = false;
-  updateBolsa(gbsimp: any, getkAcPeCo:any, gbsref: any) {
-    this.isUpdating = true;
-    this.limpiarMessages();
-
-    let cleanValue = gbsimp.replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, '');
-    let parsedValue = parseFloat(cleanValue);
-
-    if ( parsedValue > getkAcPeCo) {
-      this.guardarMesage = 'HA SOBREPASADO EL DISPONIBLE DE LA REFERENCIA';
-      this.isUpdating = false;
-      return;
+  formateGbsibg() {
+    if (!this.selectedBolsas || this.selectedBolsas.gbsibg === undefined || this.selectedBolsas.gbsibg === null) return;
+    let value = String(this.selectedBolsas.gbsibg)
+      .replace(/\s/g, '')
+      .replace(/\./g, '')     
+      .replace(',', '.')       
+      .replace(/[^\d.-]/g, '');
+    let num = parseFloat(value);
+    if (!isNaN(num)) {
+      this.selectedBolsas.gbsibg = num.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' });
     }
+  }
 
-    const today = new Date();
-    const payload = {
-      GBSIMP: parsedValue,
-      GBSIUS: 0,
-      GBSICO: 0,
-      GBSFOP: today.toISOString().slice(0, 19)
-    };
-
-    this.http.patch<void>(`${environment.backendUrl}/api/gbs/${this.entcod}/${this.eje}/${this.cge}/${gbsref}`, payload)
-    .subscribe({
-      next: () => {
-        this.guardarMesageSuccess = 'Bolsa actualizada correctamente';
-        this.isUpdating = false;
-      },
-      error: (err) => {
-        this.guardarMesage = err.error.error ?? err.error;
-        this.isUpdating = false;
-      }
-    });
+  cleaningCurrency(value: any) {
+    return this.parseMoney(value);
   }
 
   //misc

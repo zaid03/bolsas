@@ -26,6 +26,7 @@ export class DashboardComponent implements OnInit {
   esComprador: boolean = false;
   esAlmacen: boolean = false;
   allowedMnucods: string[] = [];
+  version: string = '';
   logoPath = 'assets/images/logo_iass.png';
 
   //menu variables
@@ -74,6 +75,19 @@ export class DashboardComponent implements OnInit {
     }
     
     if (this.Estado > 0) { this.getStatus(this.Estado); }
+    this.fetchVersion();
+  }
+
+  fetchVersion() {
+    this.http.get<any>(`${environment.backendUrl}/api/version/num`).subscribe({
+      next: (res) => {
+        this.version = res.version;
+      },
+      error: (err) => {
+        console.warn('versión no encontrada');
+        return;
+      }
+    })
   }
 
   isDisabled(code: string): boolean {
@@ -117,6 +131,7 @@ export class DashboardComponent implements OnInit {
         this.router.navigate(['/proveedorees']);
         break;
       case 'contratos':
+        this.router.navigate(['/contratos']);
         break;
       case 'Cfactura':
         this.router.navigate(['/Cfactura']);
@@ -125,6 +140,7 @@ export class DashboardComponent implements OnInit {
         this.router.navigate(['/facturas']);
         break;
       case 'contabilizacion':
+        this.router.navigate(['/contabilizacion']);
         break;
       case 'Fcontabilizadas':
         break;
@@ -208,7 +224,7 @@ export class DashboardComponent implements OnInit {
         this.page = 0;
       },
       error: (err) => {
-        this.servicesError = err?.error || 'Error desconocido';
+        this.servicesError = err.error.error ?? err.error;
       }
     });
   }
